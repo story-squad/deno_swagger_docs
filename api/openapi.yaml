@@ -1,0 +1,456 @@
+openapi: 3.0.0
+info:
+  title: Deno Contest API
+  description: "This is documentation for the Story Squad Deno API.\n\nAll endpoints\
+    \ on this API have the following prefix: '/api/v2'\n"
+  contact:
+    email: you@your-company.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: /
+tags:
+- name: Auth
+  description: Authentication/Authorization
+- name: Submissions
+  description: /submissions
+paths:
+  /auth/login:
+    post:
+      tags:
+      - Auth
+      summary: log a user in
+      description: |
+        Log in to the application with your Story Squad
+        account credentials
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body'
+      responses:
+        "201":
+          description: successful logins return the user and an auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authResponse'
+        "401":
+          description: Invalid password
+        "404":
+          description: User not found
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /auth/register:
+    post:
+      tags:
+      - Auth
+      summary: register a user
+      description: Register a new Story Squad account
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        "201":
+          description: successful logins return a success message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authResponse'
+        "400":
+          description: Missing data in request
+        "409":
+          description: Foreign key or unique constraint violation
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /auth/o/clever/button:
+    get:
+      tags:
+      - Auth
+      summary: Login with Clever link retrieval
+      description: "This endpoint returns a URL that, when visited, takes the user\n\
+        to their Clever Login Portal. After logging in, the user will\nbe redirected\
+        \ back to the application's Redirect URI.\n"
+      operationId: loginWithCleverButton
+      responses:
+        "200":
+          description: Successfully retrieved Login with Clever URI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /auth/o/clever:
+    get:
+      tags:
+      - Auth
+      summary: Initial Clever auth endpoint
+      description: "Find a user's Clever authentication status. Has 3 distinct status\n\
+        codes, each signifying a different body value type.\n\n'SUCCESS', 'MERGE',\
+        \ 'NEW'\n\nOn success, the body property will contain the necessary information\n\
+        to log the user into your application\n\nOn merge, the body will contain the\
+        \ user's account info. Have the\nuser attempt to sign in (make sure to autofill\
+        \ the codename field)\nand, on success, the user's Story Squad account will\
+        \ be linked to\ntheir Clever login.\n\nOn new, the body will contain the user's\
+        \ Clever profile info. This\ninfo should be populated into the signup form.\
+        \ When the user signs\nup in this manner, their Story Squad and Clever accounts\
+        \ will be\nautomatically linked.\n"
+      operationId: cleverOAuthInit
+      parameters:
+      - name: code
+        in: query
+        description: Code from the Clever API
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+        example: ?code=asdkajfskljdsflksd
+      responses:
+        "200":
+          description: Returns the user's account status and information based on
+            their status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "401":
+          description: Account type not supported
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /auth/o/clever/merge:
+    post:
+      tags:
+      - Auth
+      summary: Clever merge accounts
+      description: |
+        Merge a user's existing Story Squad account with their Clever
+        SSO account. This endpoint should be used when a user attempts
+        to log in with Clever and the main endpoint returns an object
+        with the 'MERGE' status.
+      operationId: cleverOAuthMerge
+      parameters:
+      - name: cleverId
+        in: query
+        description: User's clever ID
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+        example: ?cleverId=asdkajfskljdsflksd
+      responses:
+        "201":
+          description: successful logins return the user and an auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authResponse'
+        "401":
+          description: Invalid password
+        "404":
+          description: User not found
+        "409":
+          description: Foreign key or unique constraint violation
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /auth/o/clever/signup:
+    post:
+      tags:
+      - Auth
+      summary: new account for Clever user
+      description: |
+        Create a new Story Squad account for a user that will be linked
+        to their Clever information automatically.
+      operationId: cleverOAuthNew
+      parameters:
+      - name: userType
+        in: query
+        description: User type
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - student
+          - teacher
+        example: ?userType=student
+      - name: cleverId
+        in: query
+        description: User's Clever ID
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+        example: ?cleverId=asdkajfskljdsflksd
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body_1'
+      responses:
+        "201":
+          description: successful signup return the user and an auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authResponse'
+        "400":
+          description: Invalid user type
+        "409":
+          description: Foreign key or unique constraint violation
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Auth
+  /submissions:
+    post:
+      tags:
+      - Submissions
+      summary: submit page
+      description: |
+        Upload a handwritten image.
+      operationId: submitPage
+      parameters:
+      - name: sourceId
+        in: query
+        description: "Source of the submission. 1 = FDSC, 2 = Rumble\n"
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: number
+          enum:
+          - 1
+          - 2
+        example: ?sourceId=1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/body_2'
+      responses:
+        "201":
+          description: successful signup return the user and an auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201'
+        "400":
+          description: No file uploaded or invalid data
+        "409":
+          description: Foreign key or unique constraint violation or failed file upload
+        "422":
+          description: Unsupported file type
+        "500":
+          description: Something went wrong
+      x-swagger-router-controller: Submissions
+components:
+  schemas:
+    Date:
+      type: string
+      description: a date string in ISO format
+      example: 2021-05-10T00:00:00.000Z
+    roleId:
+      type: number
+      description: "Roles: 1 = User, 2 = Teacher, 3 = Admin"
+      enum:
+      - 1
+      - 2
+      - 3
+    CleverUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          $ref: '#/components/schemas/CleverUser_name'
+        district:
+          type: string
+    BaseUser:
+      required:
+      - codename
+      - firstname
+      - password
+      type: object
+      properties:
+        firstname:
+          type: string
+          example: Abed
+        lastname:
+          type: string
+          example: Nadir
+        codename:
+          type: string
+          example: MyCodename
+        email:
+          type: string
+          example: email@gmail.com
+    NewUser:
+      allOf:
+      - $ref: '#/components/schemas/BaseUser'
+      - required:
+        - codename
+        - firstname
+        - password
+        type: object
+        properties:
+          parentEmail:
+            type: string
+            example: parent@gmail.com
+          age:
+            type: number
+            example: 12
+          password:
+            type: string
+            example: myPassword123
+    User:
+      allOf:
+      - $ref: '#/components/schemas/BaseUser'
+      - type: object
+        properties:
+          id:
+            type: number
+            example: 1
+          roleId:
+            $ref: '#/components/schemas/roleId'
+          created_at:
+            $ref: '#/components/schemas/Date'
+          updated_at:
+            $ref: '#/components/schemas/Date'
+          isValidated:
+            type: boolean
+    authResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          example: tstrysejmkhbzdsear.fgjfxghsdfghsdteryhxcvxh.sijjtgcmxfhdzfgsdfhgf
+      example:
+        user: ""
+        token: tstrysejmkhbzdsear.fgjfxghsdfghsdteryhxcvxh.sijjtgcmxfhdzfgsdfhgf
+    cleverBaseStatus:
+      type: object
+      properties:
+        actionType:
+          type: string
+          enum:
+          - SUCCESS
+          - MERGE
+          - NEW
+        cleverId:
+          type: string
+        roledId:
+          $ref: '#/components/schemas/roleId'
+    cleverSuccess:
+      allOf:
+      - $ref: '#/components/schemas/cleverBaseStatus'
+      - type: object
+        properties:
+          body:
+            $ref: '#/components/schemas/cleverSuccess_body'
+    cleverMerge:
+      allOf:
+      - $ref: '#/components/schemas/cleverBaseStatus'
+      - type: object
+        properties:
+          body:
+            $ref: '#/components/schemas/User'
+    cleverNew:
+      allOf:
+      - $ref: '#/components/schemas/cleverBaseStatus'
+      - type: object
+        properties:
+          body:
+            $ref: '#/components/schemas/cleverNew_body'
+    body:
+      required:
+      - codename
+      - password
+      type: object
+      properties:
+        codename:
+          type: string
+          example: MyCodename
+        password:
+          type: string
+          example: myPassword123
+    inline_response_200:
+      type: object
+      properties:
+        url:
+          type: string
+          description: The URL to direct users to Log in with Clever
+          example: https://clever.com/oauth/authorize?redirect_uri=...
+      example:
+        url: https://clever.com/oauth/authorize?redirect_uri=...
+    inline_response_200_1:
+      anyOf:
+      - $ref: '#/components/schemas/cleverSuccess'
+      - $ref: '#/components/schemas/cleverMerge'
+      - $ref: '#/components/schemas/cleverNew'
+    body_1:
+      allOf:
+      - $ref: '#/components/schemas/BaseUser'
+      - type: object
+        properties:
+          password:
+            type: string
+            example: myPassword123
+    body_2:
+      type: object
+      properties:
+        story:
+          type: string
+          description: An image of the user's submission
+          format: binary
+        promptId:
+          type: number
+          description: The ID of the prompt the submission was written for
+    inline_response_201:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: message
+    CleverUser_name:
+      type: object
+      properties:
+        first:
+          type: string
+        middle:
+          type: string
+        last:
+          type: string
+    cleverSuccess_body:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    cleverNew_body:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/CleverUser'
