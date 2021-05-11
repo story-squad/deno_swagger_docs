@@ -4,8 +4,8 @@
   "description": "This is documentation for the Story Squad Deno API.  All endpoints on this API have the following prefix: '/api/v2' ",
   "main": "index.js",
   "scripts": {
-	"prestart": "npm install",
-	"start": "node index.js"
+    "prestart": "npm install",
+    "start": "node index.js"
   },
   "keywords": [
     "swagger"
